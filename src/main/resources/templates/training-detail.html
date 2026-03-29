@@ -1,0 +1,11 @@
+<h1 th:text="${training.date}"></h1>
+
+<a th:href="@{'/trainings/' + ${training.id} + '/add'}">種目追加</a>
+
+<h2>種目一覧</h2>
+
+<ul>
+    <li th:each="record : ${training.records}">
+        <span th:text="${record.exercise.name}"></span>
+    </li>
+</ul>

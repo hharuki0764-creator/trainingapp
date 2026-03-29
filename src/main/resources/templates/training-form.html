@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<h1>日付追加</h1>
+
+<form th:action="@{/trainings}" th:object="${training}" method="post">
+    <input type="date" th:field="*{date}">
+    <button type="submit">保存</button>
+</form>
+
+</body>
+</html>

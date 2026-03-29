@@ -1,0 +1,28 @@
+<h1 th:text="${date}"></h1>
+
+<a th:href="@{/trainings/add(date=${date})}">追加</a>
+
+<hr>
+
+<div th:if="${groupedRecords.isEmpty()}">
+    <p>まだトレーニングがありません</p>
+</div>
+<div th:each="entry : ${groupedRecords}">
+    <h3 th:text="${entry.key}"></h3>
+
+    <ul>
+        <li th:each="record : ${entry.value}">
+
+            <span th:text="${record.exercise.name}"></span>
+
+            <button th:onclick="'deleteSchedule(' + ${record.id} + ')'">
+                削除
+            </button>
+        </li>
+    </ul>
+</div>
+
+
+
+
+

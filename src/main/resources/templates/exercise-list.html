@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<h1>種目一覧</h1>
+
+<select name="part">
+    <option value="FULL">全身</option>
+    <option value="LEG">脚</option>
+    <option value="SHOULDER">肩</option>
+    <option value="BACK">背中</option>
+    <option value="ARM">腕</option>
+</select>
+
+<a href="/exercises/new">追加</a>
+
+<select name="exerciseId">
+    <option th:each="e : ${exercises}"
+            th:value="${e.id}"
+            th:text="${e.name}">
+    </option>
+</select>
+
+
+</body>
+</html>

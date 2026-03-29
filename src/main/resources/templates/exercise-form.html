@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<h1>種目追加</h1>
+
+<form th:action="@{/exercises}" th:object="${exercise}" method="post">
+    <input type="text" th:field="*{name}" placeholder="種目名">
+    <button type="submit">保存</button>
+</form>
+
+</body>
+</html>

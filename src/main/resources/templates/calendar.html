@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#4dabf7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー</title>
+    <style>
+        body {
+            background-color: #74c0fc; /* 濃いめの水色 */
+            margin: 0;
+            padding: 10px;
+            font-family: sans-serif;
+        }
+
+        /* カレンダーの外枠 */
+        table {
+            background: white;
+            margin: 0 auto;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-collapse: collapse;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 10px 0 15px;
+        }
+
+        /* 年月 */
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .nav-btn {
+            background: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 20px;
+            color: #333;
+            text-decoration: none;
+
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        .nav-btn {
+            background: #4dabf7;
+            color: white;
+        }
+
+        /* ホバー */
+        .nav-btn:hover {
+            background: #f1f3f5;
+        }
+
+        /* 押した感 */
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        td, th {
+            width: 14vw;
+            height: 14vw;
+            text-align: center;
+            vertical-align: top;
+            font-size: 12px;
+            padding: 2px;
+            border: 1px solid #ccc;
+        }
+        th {
+            font-size: 12px;
+            padding: 5px;
+            background: #f8f9fa;
+        }
+
+        /* 日曜 */
+        .sun {
+            color: red;
+        }
+
+        /* 土曜 */
+        .sat {
+            color: blue;
+        }
+        td.sun a {
+            color: red;
+        }
+
+        td.sat a {
+            color: blue;
+        }
+        td.today a {
+            background: #ffd43b;
+            border-radius: 50%;
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+        }
+        a {
+            text-decoration: none;
+            color: black;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        a:hover {
+            background-color: #eee;
+        }
+        .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin: 1px;
+        }
+
+        /* 部位ごと色 */
+        .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin: 1px;
+        }
+
+        .dot.FULL { background: red; }
+        .dot.CHEST { background: aqua; }
+        .dot.LEG { background: blue; }
+        .dot.SHOULDER { background: orange; }
+        .dot.BACK { background: green; }
+        .dot.ARM { background: purple; }
+
+        .dot-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 3px;
+        }
+        #training-list {
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        #modal > div,
+        #addModal > div {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+
+            width: 300px;
+            padding: 20px;
+
+            background: white;
+            border-radius: 10px;
+        }
+        #training-list {
+            padding-right: 5px;
+        }
+
+        .title-area {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .arrow {
+            font-size: 12px;
+        }
+
+        /* ピッカー全体 */
+        .picker {
+            position: fixed;
+            top: 0;
+            left: 0;          /* ←ここ重要 */
+            width: 100%;      /* ←全体にする */
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 1000;
+
+            display: none;    /* ←初期は非表示 */
+        }
+
+        /* 開いたとき */
+        .picker.open {
+            display: block;
+        }
+        .picker {
+            background: rgba(0,0,0,0.3); /* ←追加 */
+        }
+        /* 中身 */
+        .picker-content {
+            position: absolute;
+            top: 0;
+            right: -100%;
+            width: 70%;
+            height: 100%;
+            background: white;
+            display: flex;
+            transition: 0.3s;
+        }
+        /* 開いたとき */
+        .picker.open .picker-content {
+            right: 0;
+        }
+
+        /* 列 */
+        .picker-column {
+            flex: 1;
+            overflow-y: auto;
+            border-right: 1px solid #eee;
+        }
+
+        /* 項目 */
+        .picker-item {
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            color: #333;
+        }
+        .picker-item,
+        .picker-item span {
+            color: #333;
+        }
+        .picker-item:hover {
+            background: #f1f3f5;
+        }
+
+        .picker-item.selected {
+            background: #4dabf7;
+            color: white;
+            font-weight: bold;
+        }
+        .picker-item.selected,
+        .picker-item.selected span {
+            color: white;
+        }
+        .picker-item.selected:hover {
+            background: #4dabf7;
+        }
+        /* 共通ボタン */
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            background: #4dabf7;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            min-height: 44px; /* iPhone基準 */
+            font-size: 16px;
+        }
+
+        /* 押した感 */
+        button:active {
+            transform: scale(0.95);
+        }
+
+        /* モーダルアニメーション */
+        .modal,
+        #modal > div,
+        #addModal > div,
+        #recordModal > div,
+        #graphModal > div,
+        #exerciseListModal > div,
+        #addExerciseModal > div {
+            animation: slideUp 0.2s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        body {
+            -webkit-overflow-scrolling: touch;
+        }
+        /* 入力系 共通 */
+        .input-large {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px; /* iPhoneズーム防止 */
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        /* セレクト */
+        .select-large {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            background: white;
+            margin-bottom: 10px;
+        }
+
+        /* ボタン（モバイル用） */
+        .btn-large {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+            background: #4dabf7;
+            color: white;
+            margin-top: 10px;
+        }
+
+        /* サブボタン */
+        .btn-sub {
+            background: #dee2e6;
+            color: #333;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            z-index: 100;
+
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="calendar-header">
+    <a th:href="@{/(year=${year}, month=${month - 1})}" class="nav-btn">‹</a>
+
+    <div class="title-area" onclick="togglePicker()">
+        <span class="title" th:text="${year} + '年 ' + ${month} + '月'"></span>
+        <span class="arrow">▼</span>
+    </div>
+
+    <a th:href="@{/(year=${year}, month=${month + 1})}" class="nav-btn">›</a>
+</div>
+
+<div id="picker" class="picker" onclick="closePicker(event)">
+    <div class="picker-content" onclick="event.stopPropagation()">
+        <!-- 年 -->
+        <div class="picker-column">
+            <div th:each="y : ${#numbers.sequence(2020, 2030)}"
+                 class="picker-item"
+                 th:classappend="${y == year} ? ' selected' : ''"
+                 th:onclick="'selectYear(' + ${y} + ')'">
+
+                <span th:text="${y} + '年'"></span>
+            </div>
+        </div>
+
+        <!-- 月 -->
+        <div class="picker-column">
+            <div th:each="m : ${#numbers.sequence(1,12)}"
+                 class="picker-item"
+                 th:classappend="${m == month} ? ' selected' : ''"
+                 th:onclick="'selectMonth(' + ${m} + ')'">
+
+                <span th:text="${m} + '月'"></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<table>
+    <tr>
+        <th class="sun">日</th>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+    </tr>
+
+    <!-- ⭐ これが絶対必要 -->
+    <tr th:each="week : ${calendar}">
+        <td th:each="day, stat : ${week}"
+            th:class="
+                (${stat.index == 0} ? 'sun ' : '') +
+                (${stat.index == 6} ? 'sat ' : '') +
+                (${day != 0 and #temporals.format(#temporals.create(year, month, day), 'yyyy-MM-dd') == #temporals.format(#temporals.createNow(), 'yyyy-MM-dd')} ? 'today' : '')
+            "
+            th:id="${day != 0} ? 'day-' + ${year + '-' + #numbers.formatInteger(month,2) + '-' + #numbers.formatInteger(day,2)} : null">
+            <div th:if="${day != 0}"
+                 th:with="dateStr=${year + '-' + #numbers.formatInteger(month,2) + '-' + #numbers.formatInteger(day,2)}">
+
+                <!-- 日付クリック -->
+                <a href="#"
+                   th:attr="data-date=${dateStr}"
+                   onclick="handleClick(this)"
+                   th:text="${day}">
+                </a>
+
+                <!-- ドット -->
+                <div>
+                <span th:if="${trainingMapStr[dateStr] != null}"
+                      th:each="part : ${trainingMapStr[dateStr]}"
+                      th:class="'dot ' + ${part}">
+                </span>
+                </div>
+
+            </div>
+
+        </td>
+    </tr>
+</table>
+<div style="text-align:center; margin-top:20px;">
+    <button onclick="openExerciseListModal()">
+        📈 グラフを見る
+    </button>
+</div>
+<div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; " onclick="closeModalCommon()">
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;"
+        onclick="event.stopPropagation()"
+    >
+
+        <!-- ⭐ 上部ボタン -->
+        <div style="display:flex; gap:10px;">
+            <button style="flex:1;" onclick="closeModal()">戻る</button>
+            <button style="flex:1;" onclick="openAddModal()">追加</button>
+        </div>
+
+        <h3 id="modal-date"></h3>
+
+        <div id="training-list"></div>
+
+    </div>
+</div>
+
+<div id="addModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; " onclick="closeModalCommon()">
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;"
+        onclick="event.stopPropagation()"
+    >
+
+        <h3>トレーニング追加</h3>
+
+        <!-- 部位 -->
+        <select id="partSelect" class="select-large">
+            <option value="">部位を選択</option>
+            <option value="FULL">全身</option>
+            <option value="CHEST">胸</option>
+            <option value="LEG">脚</option>
+            <option value="SHOULDER">肩</option>
+            <option value="BACK">背中</option>
+            <option value="ARM">腕</option>
+        </select>
+
+        <br><br>
+
+        <!-- 種目 -->
+        <select id="exerciseSelect" class="select-large" name="exerciseId" required></select>
+
+        <br><br>
+
+        <button class="btn-large" onclick="saveTraining()">保存</button>
+        <button class="btn-large btn-sub" onclick="backToConfirm()">戻る</button>
+
+    </div>
+</div>
+
+<div id="recordModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; " onclick="closeModalCommon()">
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;"
+        onclick="event.stopPropagation()"
+    >
+
+        <h3>実績入力</h3>
+
+        <input type="number" id="sets" placeholder="セット数" class="input-large"><br>
+        <input type="number" id="reps" placeholder="回数" class="input-large"><br>
+        <input type="number" id="weight" placeholder="重量" class="input-large"><br>
+
+        <button class="btn-large" onclick="saveRecord()">保存</button>
+        <button class="btn-large btn-sub" onclick="closeRecordModal()">閉じる</button>
+
+    </div>
+</div>
+<div id="graphModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+    z-index:200; "
+    onclick="closeModalCommon()"
+>
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;"
+        onclick="event.stopPropagation()"
+    >
+
+        <h3 id="graphTitle"></h3>
+
+        <div>
+            <button onclick="loadGraph('1m')">1ヶ月</button>
+            <button onclick="loadGraph('3m')">3ヶ月</button>
+            <button onclick="loadGraph('1y')">1年</button>
+        </div>
+
+        <canvas id="graphCanvas"></canvas>
+
+        <button onclick="closeGraphModal()">閉じる</button>
+
+    </div>
+</div>
+
+<div id="exerciseListModal" style="
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.5);
+    z-index:200; "
+    onclick="closeModalCommon()"
+>
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        /*transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+
+        max-height:80vh;
+        overflow-y:auto;
+        background:white;
+        padding:20px;
+        padding-top: 10px;
+        padding-bottom: 30px;
+        border-radius:15px 15px 0 0;
+        box-sizing:border-box;"
+        onclick="event.stopPropagation()"
+    >
+
+        <div style="display:flex; justify-content:space-between;">
+            <h3>種目一覧</h3>
+            <button onclick="openAddExerciseModal()">
+                ＋ 種目追加
+            </button>
+        </div>
+
+        <div id="exerciseList"></div>
+
+        <button onclick="closeExerciseListModal()">閉じる</button>
+
+    </div>
+</div>
+<div id="addExerciseModal" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.5);
+    z-index:200;"
+    onclick="closeModalCommon()"
+>
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;
+    ">
+
+        <h3>種目追加</h3>
+
+        <input type="text" id="newExerciseName" placeholder="種目名" class="input-large">
+
+        <select id="newExercisePart" class="select-large">
+            <option value="CHEST">胸</option>
+            <option value="BACK">背中</option>
+            <option value="LEG">脚</option>
+            <option value="SHOULDER">肩</option>
+            <option value="ARM">腕</option>
+        </select>
+
+        <button class="btn-large" onclick="saveNewExercise()">追加</button>
+        <button class="btn-large btn-sub" onclick="closeAddExerciseModal()">閉じる</button>
+
+    </div>
+</div>
+
+<script>
+    function handleClick(el) {
+        const date = el.dataset.date;
+
+        openModal(date);
+    }
+
+    function openModal(date) {
+        selectedDate = date;
+
+        //document.getElementById("modal").style.display = "block";
+        openModalCommon("modal");
+        document.getElementById("modal-date").innerText = date;
+
+        fetch("/api/trainings?date=" + date)
+            .then(res => res.json())
+            .then(data => {
+
+                const listDiv = document.getElementById("training-list");
+                listDiv.innerHTML = "";
+
+                if (data.length === 0) {
+                    listDiv.innerHTML = "<p>予定なし</p>";
+                    return;
+                }
+
+                data.forEach(item => {
+                    const el = document.createElement("div");
+                    /*el.innerText = item.part + " - " + item.name; */
+                    el.innerHTML = `
+                        ${partMap[item.part]} - ${item.name}
+                        <br>
+                            ${item.weight ? `今回：${item.weight}kg × ${item.reps}回 × ${item.sets}セット` : "実績未入力"}
+                        <br>
+                        <br>
+                            ${item.prevWeight ? `前回：${item.prevWeight}kg × ${item.prevReps}回 × ${item.prevSets}セット` : ""}
+                        <br>
+                        <button onclick="openRecordModal(${item.id})">実績入力</button>
+                        <button onclick="openEditModal(${item.id}, ${item.sets || 0}, ${item.reps || 0}, ${item.weight || 0})">
+                            編集
+                        </button>
+                        <button onclick="deleteSchedule(${item.id})">削除</button>
+                        <button onclick="openGraphModal(${item.exerciseId}, '${item.name}')">
+                            グラフ
+                        </button>
+                        <button onclick="openVideo(${item.exerciseId})">
+                            動画
+                        </button>
+                    `;
+
+                    listDiv.appendChild(el);
+                });
+            });
+        loadTrainingList(date);
+    }
+    function closeModal() {
+        //document.getElementById("modal").style.display = "none";
+        closeModalCommon();
+    }
+
+
+    const partMap = {
+        FULL: "全身",
+        CHEST: "胸",
+        LEG: "脚",
+        SHOULDER: "肩",
+        BACK: "背中",
+        ARM: "腕"
+    };
+</script>
+
+<script>
+    let selectedDate = "";
+
+
+    let selectedRecordId = null;
+
+    function openRecordModal(id) {
+        selectedRecordId = id;
+        //document.getElementById("recordModal").style.display = "block";
+        openModalCommon("recordModal");
+    }
+
+    function closeRecordModal() {
+        //document.getElementById("recordModal").style.display = "none";
+        closeModalCommon();
+    }
+
+    function saveRecord() {
+        const sets = document.getElementById("sets").value;
+        const reps = document.getElementById("reps").value;
+        const weight = document.getElementById("weight").value;
+
+        fetch("/trainings/record", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `id=${selectedRecordId}&sets=${sets}&reps=${reps}&weight=${weight}`
+        })
+            .then(() => {
+
+                //closeRecordModal();
+                //openModal(selectedDate); // 再描画
+                closeModalCommon();
+                renderDots(selectedDate);
+                loadTrainingList(selectedDate);
+            });
+    }
+
+    /* 確認閉じる
+    function closeModal() {
+        //document.getElementById("modal").style.display = "none";
+        closeModalCommon();
+    }*/
+
+    // ⭐ 追加モーダル開く
+    function openAddModal() {
+        //document.getElementById("addModal").style.display = "block";
+        openModalCommon("addModal");
+    }
+
+    // 閉じる
+    function closeAddModal() {
+        //document.getElementById("addModal").style.display = "none";
+        closeModalCommon();
+    }
+
+    // ⭐ 保存処理
+    function saveTraining() {
+        const exerciseId = document.getElementById("exerciseSelect").value;
+
+        fetch("/trainings/add", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "date=" + selectedDate + "&exerciseId=" + exerciseId
+        })
+            .then(() => {
+
+                // ⭐ 追加モーダル閉じる
+                closeAddModal();
+
+                // ⭐ 再取得して更新
+                /*reloadTrainingList();*/
+                //openModal(selectedDate);
+
+                // ⭐ カレンダーにも反映
+                /*addDotToCalendar(selectedDate);*/
+                renderDots(selectedDate);
+
+                loadTrainingList(selectedDate)
+            });
+    }
+    function loadTrainingList(date) {
+        fetch("/api/trainings?date=" + date)
+            .then(res => res.json())
+            .then(data => {
+
+                const listDiv = document.getElementById("training-list");
+                listDiv.innerHTML = "";
+
+                if (data.length === 0) {
+                    listDiv.innerHTML = "<p>予定なし</p>";
+                    return;
+                }
+
+                data.forEach(item => {
+                    const el = document.createElement("div");
+
+                    el.innerHTML = `
+                    ${partMap[item.part]} - ${item.name}
+                    <br>
+                    ${item.weight ? `今回：${item.weight}kg × ${item.reps}回 × ${item.sets}セット` : "実績未入力"}
+                    <br><br>
+                    ${item.prevWeight ? `前回：${item.prevWeight}kg × ${item.prevReps}回 × ${item.prevSets}セット` : ""}
+                    <br>
+                    <button onclick="openRecordModal(${item.id})">実績入力</button>
+                    <button onclick="openEditModal(${item.id}, ${item.sets || 0}, ${item.reps || 0}, ${item.weight || 0})">
+                        編集
+                    </button>
+                    <button onclick="deleteSchedule(${item.id})">削除</button>
+                    <button onclick="openGraphModal(${item.exerciseId}, '${item.name}')">
+                        グラフ
+                    </button>
+                    <button onclick="openVideo(${item.exerciseId})">
+                        動画
+                    </button>
+                `;
+
+                    listDiv.appendChild(el);
+                });
+            });
+    }
+    // ⭐ これ追加（ここが重要）
+    document.getElementById("partSelect").addEventListener("change", function() {
+        const part = this.value;
+
+        console.log("選択されたpart:", part);
+
+        fetch("/api/exercises?part=" + part)
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById("exerciseSelect");
+                select.innerHTML = "";
+
+                data.forEach(e => {
+                    const option = document.createElement("option");
+                    option.value = e.id;
+                    option.text = e.name;
+                    select.appendChild(option);
+                });
+            });
+    });
+
+    function reloadTrainingList() {
+
+        fetch("/api/exercises-by-date?date=" + selectedDate)
+            .then(res => res.json())
+            .then(data => {
+
+                const listDiv = document.getElementById("training-list");
+                listDiv.innerHTML = "";
+
+                if (data.length === 0) {
+                    listDiv.innerHTML = "<p>予定なし</p>";
+                    return;
+                }
+
+                // ⭐ ① grouped作る（これが抜けてた）
+                const grouped = {};
+
+                data.forEach(e => {
+                    if (!grouped[e.part]) {
+                        grouped[e.part] = [];
+                    }
+                    grouped[e.part].push(e.name);
+                });
+
+                // ⭐ ② 部位セット
+                const parts = new Set();
+                data.forEach(e => parts.add(e.part));
+
+                // ⭐ ③ ドット更新
+                updateDots(selectedDate, parts);
+
+                // ⭐ ④ 表示
+                for (const part in grouped) {
+                    const title = document.createElement("div");
+                    title.innerText = partMap[part]; // ←日本語化もOK
+                    title.style.fontWeight = "bold";
+                    listDiv.appendChild(title);
+
+                    grouped[part].forEach(name => {
+                        const el = document.createElement("div");
+                        el.innerText = "・" + name;
+                        listDiv.appendChild(el);
+                    });
+                }
+            });
+    }
+    function addDotToCalendar(date) {
+        const cell = document.getElementById("day-" + date);
+
+        if (!cell) return;
+
+        // ドットコンテナ探す or 作る
+        let dotContainer = cell.querySelector(".dot-container");
+
+        if (!dotContainer) {
+            dotContainer = document.createElement("div");
+            dotContainer.className = "dot-container";
+            cell.appendChild(dotContainer);
+        }
+        // 🔥 ここ追加（重要）
+        dotContainer.innerHTML = "";
+
+        // 新しいドット
+        const dot = document.createElement("span");
+        dot.className = "dot FULL"; // ← とりあえず（後で部位反映できる）
+
+        dotContainer.appendChild(dot);
+    }
+
+    function backToConfirm() {
+        closeAddModal();
+    }
+
+    function updateDots(date, parts) {
+
+        const cell = document.getElementById("day-" + date);
+        if (!cell) return;
+
+        // ⭐ 既存ドット削除（重要）
+        const old = cell.querySelector(".dot-container");
+        if (old) old.remove();
+
+        const dotContainer = document.createElement("div");
+        dotContainer.className = "dot-container";
+
+        // ⭐ FULL優先
+        if (parts.has("FULL")) {
+            const dot = createDot("FULL");
+            dotContainer.appendChild(dot);
+        } else {
+            parts.forEach(p => {
+                const dot = createDot(p);
+                dotContainer.appendChild(dot);
+            });
+        }
+
+        cell.appendChild(dotContainer);
+    }
+
+    function createDot(part) {
+        const dot = document.createElement("span");
+        dot.className = "dot " + part;
+        return dot;
+    }
+
+    // ⭐ 初期表示（全身）
+    function loadAllDots() {
+
+        // カレンダー内の全日付取得
+        const cells = document.querySelectorAll("[id^='day-']");
+
+        cells.forEach(cell => {
+            const date = cell.id.replace("day-", "");
+
+            fetch("/api/trainings?date=" + date)
+                .then(res => res.json())
+                .then(data => {
+
+                    if (data.length === 0) return;
+
+                    const parts = new Set();
+
+                    data.forEach(item => {
+                        parts.add(item.part);
+                    });
+
+                    renderDotsFromParts(date, parts);
+                });
+        });
+    }
+    function renderDotsFromParts(date, parts) {
+        const cell = document.getElementById("day-" + date);
+        if (!cell) return;
+
+        let dotContainer = cell.querySelector(".dot-container");
+
+        if (!dotContainer) {
+            dotContainer = document.createElement("div");
+            dotContainer.className = "dot-container";
+            cell.appendChild(dotContainer);
+        }
+
+        dotContainer.innerHTML = "";
+
+        if (parts.has("FULL")) {
+            const dot = document.createElement("span");
+            dot.className = "dot FULL";
+            dotContainer.appendChild(dot);
+            return;
+        }
+
+        parts.forEach(part => {
+            const dot = document.createElement("span");
+            dot.className = "dot " + part;
+            dotContainer.appendChild(dot);
+        });
+    }
+    window.addEventListener("load", function () {
+        loadAllDots();
+
+        const partSelect = document.getElementById("partSelect");
+        if (partSelect) {
+            loadExercises(partSelect.value);
+        }
+    });
+    let selectedYear = null;
+    let selectedMonth = null;
+
+    function togglePicker() {
+        const picker = document.getElementById("picker");
+
+        picker.classList.toggle("open");
+
+        // ⭐ 追加
+        if (picker.classList.contains("open")) {
+            document.body.style.overflow = "hidden";
+            setTimeout(scrollToSelected, 100);
+        } else {
+            document.body.style.overflow = "auto";
+        }
+    }
+    function closePicker(event) {
+        const picker = document.getElementById("picker");
+
+        picker.classList.remove("open");
+        document.body.style.overflow = "auto";
+    }
+    function selectYear(y) {
+        selectedYear = y;
+        goToDate();
+    }
+
+    function selectMonth(m) {
+        selectedMonth = m;
+        goToDate();
+    }
+
+    function goToDate() {
+        if (selectedYear && selectedMonth) {
+            window.location.href = `/?year=${selectedYear}&month=${selectedMonth}`;
+        }
+    }
+
+    function scrollToSelected() {
+        const selectedItems = document.querySelectorAll(".picker-item.selected");
+
+        selectedItems.forEach(el => {
+            el.scrollIntoView({
+                block: "center"
+            });
+        });
+    }
+
+    function deleteSchedule(id) {
+        if (!confirm("削除していい？")) return;
+
+        fetch(`/trainings/delete/${id}`, {
+            method: "POST"
+        })
+            .then(res => {
+                //console.log(res.status);
+
+                //openModal(selectedDate);
+                renderDots(selectedDate);
+                loadTrainingList(selectedDate);
+
+                // 🔥 ここが本質
+                fetch("/api/trainings?date=" + selectedDate)
+                    .then(res => res.json())
+                    .then(data => {
+
+                        if (data.length === 0) {
+                            /*removeDotFromCalendar(selectedDate);*/
+                            renderDots(selectedDate);
+                        } else {
+                            /**addDotToCalendar(selectedDate);*/
+                            renderDots(selectedDate);
+                        }
+                    });
+            });
+    }
+
+    function removeDotFromCalendar(date) {
+        const cell = document.querySelector(`[data-date="${date}"]`);
+        if (!cell) return;
+
+        const dot = cell.querySelector(".dot");
+        if (dot) dot.remove();
+    }
+
+    function renderDots(date) {
+        const cell = document.getElementById("day-" + date);
+        if (!cell) return;
+
+        let dotContainer = cell.querySelector(".dot-container");
+
+        if (!dotContainer) {
+            dotContainer = document.createElement("div");
+            dotContainer.className = "dot-container";
+            cell.appendChild(dotContainer);
+        }
+
+        // 🔥 一旦全部消す（これが重要）
+        dotContainer.innerHTML = "";
+
+        // 🔥 最新データ取得
+        fetch("/api/trainings?date=" + date)
+            .then(res => res.json())
+            .then(data => {
+
+                if (data.length === 0) return;
+
+                // 🔥 部位を集める
+                const parts = new Set();
+
+                data.forEach(item => {
+                    parts.add(item.part);
+                });
+
+                // 🔥 FULLがある場合
+                if (parts.has("FULL")) {
+                    const dot = document.createElement("span");
+                    dot.className = "dot FULL";
+                    dotContainer.appendChild(dot);
+                    return;
+                }
+
+                // 🔥 部位ごとに1つずつ
+                parts.forEach(part => {
+                    const dot = document.createElement("span");
+                    dot.className = "dot " + part;
+                    dotContainer.appendChild(dot);
+                });
+            });
+    }
+    let currentExerciseId = null;
+    let chart = null;
+
+    function openGraphModal(exerciseId, name) {
+        currentExerciseId = exerciseId;
+
+        document.getElementById("graphTitle").innerText = name;
+        //document.getElementById("graphModal").style.display = "block";
+        openModalCommon("graphModal");
+
+        loadGraph("1m");
+    }
+
+    function closeGraphModal() {
+        //document.getElementById("graphModal").style.display = "none";
+        closeModalCommon();
+    }
+    function loadGraph(period) {
+
+        fetch(`/api/records/history?exerciseId=${currentExerciseId}&period=${period}`)
+            .then(res => res.json())
+            .then(data => {
+
+                const labels = data.map(d => d.date);
+                const weights = data.map(d => d.weight);
+
+                if (chart) chart.destroy();
+
+                const ctx = document.getElementById("graphCanvas");
+
+                chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "重量(kg)",
+                            data: weights
+                        }]
+                    }
+                });
+            });
+    }
+
+    function openExerciseListModal() {
+        //document.getElementById("exerciseListModal").style.display = "block";
+        openModalCommon("exerciseListModal");
+
+        loadExerciseList();
+    }
+
+    function closeExerciseListModal() {
+        //document.getElementById("exerciseListModal").style.display = "none";
+        closeModalCommon();
+    }
+
+    function loadExerciseList() {
+
+        fetch("/api/exercises/all")
+            .then(res => res.json())
+            .then(data => {
+
+                const list = document.getElementById("exerciseList");
+                list.innerHTML = "";
+
+                data.forEach(ex => {
+                    const div = document.createElement("div");
+
+                    div.innerHTML = `
+                        <div style="
+                            display:flex;
+                            justify-content:space-between;
+                            align-items:center;
+                            padding:8px 0;
+                            border-bottom:1px solid #eee;
+                        ">
+
+                            <!-- 種目名（ただのテキスト） -->
+                            <span style="font-size:16px;">
+                                ${ex.name}
+                            </span>
+
+                            <!-- ボタン群 -->
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="openGraphFromList(${ex.id}, \`${ex.name}\`)">
+                                    📈
+                                </button>
+
+                                <button onclick="openVideo(${ex.id})">
+                                    ▶
+                                </button>
+                            </div>
+
+                        </div>
+                     `;
+
+                    list.appendChild(div);
+                });
+            });
+    }
+
+    function openGraphFromList(id, name) {
+        closeExerciseListModal();
+        openGraphModal(id, name);
+    }
+
+    function openAddExerciseModal() {
+        //document.getElementById("addExerciseModal").style.display = "block";
+        openModalCommon("addExerciseModal");
+
+        loadExerciseList();
+    }
+
+    function closeAddExerciseModal() {
+        //document.getElementById("addExerciseModal").style.display = "none";
+        closeModalCommon();
+    }
+
+    function saveNewExercise() {
+
+        const name = document.getElementById("newExerciseName").value;
+        const part = document.getElementById("newExercisePart").value;
+
+        fetch("/exercises/add", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `name=${name}&part=${part}`
+        })
+            .then(() => {
+                loadExerciseList();
+
+                // 🔥 これ追加
+                const partSelect = document.getElementById("partSelect");
+                if (partSelect) {
+                    loadExercises(partSelect.value);
+                }
+                // 入力クリア
+                document.getElementById("newExerciseName").value = "";
+
+                closeAddExerciseModal();
+            });
+    }
+    function openEditModal(id, sets, reps, weight) {
+        //document.getElementById("editModal").style.display = "block";
+        openModalCommon("editModal");
+
+        document.getElementById("editId").value = id;
+        document.getElementById("editSets").value = sets || "";
+        document.getElementById("editReps").value = reps || "";
+        document.getElementById("editWeight").value = weight || "";
+    }
+
+    function closeEditModal() {
+        //document.getElementById("editModal").style.display = "none";
+        closeModalCommon();
+    }
+
+    function saveEdit() {
+        const id = document.getElementById("editId").value;
+        const sets = document.getElementById("editSets").value;
+        const reps = document.getElementById("editReps").value;
+        const weight = document.getElementById("editWeight").value;
+
+        fetch("/trainings/record", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `id=${id}&sets=${sets}&reps=${reps}&weight=${weight}`
+        })
+            .then(() => {
+                alert("更新完了");
+                location.reload();
+            });
+    }
+    let modalStack = [];
+
+    function openModalCommon(modalId) {
+        const modal = document.getElementById(modalId);
+
+        modal.style.display = "block";
+        modalStack.push(modal);
+
+        document.getElementById("overlay").style.display = "block";
+        // 🔥 追加（最重要）
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeModalCommon() {
+        if (modalStack.length === 0) return;
+
+        const modal = modalStack.pop();
+        modal.style.display = "none";
+
+        // 🔥 まだモーダル残ってたらoverlayは消さない
+        if (modalStack.length === 0) {
+            document.getElementById("overlay").style.display = "none";
+
+            document.body.style.overflow = "auto";
+        }
+    }
+    window.addEventListener("load", function () {
+        const overlay = document.getElementById("overlay");
+        if (overlay) {
+            overlay.addEventListener("click", closeModalCommon);
+        }
+    });
+    let startY = 0;
+
+    document.addEventListener("touchstart", e => {
+        startY = e.touches[0].clientY;
+    });
+
+    document.addEventListener("touchend", e => {
+        let startY = 0;
+
+        // タッチ開始
+        document.addEventListener("touchstart", e => {
+            startY = e.touches[0].clientY;
+        });
+
+        // タッチ終了
+        document.addEventListener("touchend", e => {
+
+            // 🔥 モーダル開いてなかったら何もしない
+            if (!currentModal) return;
+
+            // 🔥 モーダルの中なら無視
+            const isInsideModal = e.target.closest(
+                "#modal > div, #addModal > div, #recordModal > div, #graphModal > div, #exerciseListModal > div, #addExerciseModal > div, #editModal > div"
+            );
+
+            if (isInsideModal) return;
+
+            const endY = e.changedTouches[0].clientY;
+
+            // 🔥 スワイプ距離を少し増やす（誤爆防止）
+            if (endY - startY > 120) {
+                closeModalCommon();
+            }
+        });
+    });
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(() => console.log("SW登録成功"))
+            .catch(err => console.log("SW登録失敗", err));
+    }
+    function openVideo(exerciseId) {
+        window.location.href = "/video?exerciseId=" + exerciseId;
+    }
+
+    let dragStartY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    document.addEventListener("touchstart", e => {
+        if (!currentModal) return;
+
+        const modalContent = currentModal.querySelector("div");
+        if (!modalContent.contains(e.target)) return;
+
+        dragStartY = e.touches[0].clientY;
+        isDragging = true;
+    });
+
+    document.addEventListener("touchmove", e => {
+        if (!isDragging || !currentModal) return;
+
+        const modalContent = currentModal.querySelector("div");
+
+        currentY = e.touches[0].clientY;
+        const diff = currentY - dragStartY;
+
+        if (diff > 0) {
+            modalContent.style.transform = `translateY(${diff}px)`;
+        }
+    });
+
+    document.addEventListener("touchend", e => {
+        if (!isDragging || !currentModal) return;
+
+        const modalContent = currentModal.querySelector("div");
+        const diff = currentY - dragStartY;
+
+        if (diff > 150) {
+            // 🔥 閉じる
+            closeModalCommon();
+        } else {
+            // 🔥 元に戻す
+            modalContent.style.transform = "translateY(0)";
+        }
+
+        isDragging = false;
+    });
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; " onclick="closeModalCommon()">
+
+
+    <div style="
+        position:absolute;
+        bottom:0;
+        left: 0;
+        width: 100%;
+        max-width: 500px;
+
+        transform: translateY(0);
+        transition: transform 0.2s;
+        touch-action: none; /* ←重要 */
+        background:white;
+        padding:20px;
+        border-radius:15px 15px 0 0;
+        box-sizing: border-box;"
+         onclick="event.stopPropagation()"
+    >
+
+        <h3>編集</h3>
+
+        <input type="hidden" id="editId" class="input-large">
+
+        <input type="number" id="editSets" placeholder="セット" class="input-large"><br>
+        <input type="number" id="editReps" placeholder="回数" class="input-large"><br>
+        <input type="number" id="editWeight" placeholder="重量" class="input-large"><br>
+
+        <button class="btn-large" onclick="saveEdit()">保存</button>
+        <button class="btn-large btn-sub" onclick="closeEditModal()">閉じる</button>
+
+    </div>
+</div>
+<div id="overlay" class="overlay"></div>
+</body>
+</html>

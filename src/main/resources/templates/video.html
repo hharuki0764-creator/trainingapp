@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>動画</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 220px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+            background: #4dabf7;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .danger {
+            background: #ff6b6b;
+        }
+
+        .secondary {
+            background: #adb5bd;
+        }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* ← 16:9 */
+            margin-bottom: 20px;
+        }
+
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2 th:text="${exercise.name}"></h2>
+
+<!-- 動画あり -->
+<div th:if="${exercise.videoUrl != null}">
+    <iframe id="videoFrame"
+            frameborder="0"
+            allowfullscreen>
+    </iframe>
+
+    <br>
+    <div class="button-group">
+        <button class="danger" onclick="deleteVideo()">削除</button>
+        <button class="secondary" onclick="goBack()">戻る</button>
+    </div>
+</div>
+
+<!-- 動画なし -->
+<div th:if="${exercise.videoUrl == null}">
+    <p>動画が登録されていません。</p>
+
+    <input type="text" id="videoUrl" placeholder="YouTubeリンク">
+
+    <br><br>
+    <div class="button-group">
+        <button onclick="saveVideo()">登録</button>
+        <button class="secondary" onclick="goBack()">戻る</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+
+    const exerciseId = [[${exercise.id}]];
+    const videoUrl = [[${exercise.videoUrl}]];
+    //const videoUrl = [[${exercise.videoUrl != null ? '"' + exercise.videoUrl + '"' : '""'}]];
+
+    const iframe = document.getElementById("videoFrame");
+
+    // 🔥 動画があるときだけセット
+    if (iframe && videoUrl) {
+        iframe.src = convertYoutubeUrl(videoUrl);
+    }
+
+    function saveVideo() {
+        const url = document.getElementById("videoUrl").value;
+
+        fetch("/video/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "exerciseId=" + exerciseId + "&url=" + url
+        }).then(() => location.reload());
+    }
+
+    function deleteVideo() {
+        fetch("/video/delete", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: "exerciseId=" + exerciseId
+        }).then(() => location.reload());
+    }
+
+    function goBack() {
+        history.back();
+    }
+
+    function convertYoutubeUrl(url) {
+        if (!url) return "";
+
+        if (url.includes("watch?v=")) {
+            return url.replace("watch?v=", "embed/");
+        }
+
+        if (url.includes("youtu.be/")) {
+            const id = url.split("youtu.be/")[1];
+            return "https://www.youtube.com/embed/" + id;
+        }
+
+        return url;
+    }
+</script>
+
+</body>
+</html>

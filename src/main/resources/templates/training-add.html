@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>追加</title>
+</head>
+<body>
+
+<h1>トレーニング追加</h1>
+
+<form action="/trainings/add" method="post">
+
+    <!-- 日付 -->
+    <input type="hidden" name="date" th:value="${date}">
+
+    <!-- 部位 -->
+    <label>部位</label>
+    <select id="partSelect">
+        <option value="FULL">全身</option>
+        <option value="LEG">脚</option>
+        <option value="SHOULDER">肩</option>
+        <option value="BACK">背中</option>
+        <option value="ARM">腕</option>
+    </select>
+
+    <br><br>
+
+    <!-- 種目 -->
+    <label>種目</label>
+    <select id="exerciseSelect" name="exerciseId"></select>
+
+    <br><br>
+
+    <button type="submit">追加</button>
+</form>
+
+<script>
+    document.getElementById("partSelect").addEventListener("change", function() {
+        const part = this.value;
+
+        fetch("/api/exercises?part=" + part)
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById("exerciseSelect");
+                select.innerHTML = "";
+
+                // データがない場合
+                if (data.length === 0) {
+                    const option = document.createElement("option");
+                    option.value = "";
+                    option.text = "種目がありません";
+                    select.appendChild(option);
+                    return;
+                }
+
+                // 種目を追加
+                data.forEach((e, index) => {
+                    const option = document.createElement("option");
+                    option.value = e.id;
+                    option.text = e.name;
+
+                    // ⭐ 最初の1つを自動選択
+                    if (index === 0) {
+                        option.selected = true;
+                    }
+
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error("エラー:", error);
+            });
+    });
+
+    // ⭐ ページ読み込み時に自動実行
+    window.onload = function() {
+        const partSelect = document.getElementById("partSelect");
+        partSelect.dispatchEvent(new Event("change"));
+    };
+</script>
+
+</body>
+</html>
